@@ -81,3 +81,23 @@ compute_services:
     - cinder-volume
     - cinder-backup
     - libvirtd
+
+haproxy_backends:
+    - horizon
+    - horizon-ssl
+    - keystone-1
+    - keystone-2
+    - nova-api-1
+    - nova-api-2
+    - nova-metadata-api
+    - cinder-api
+    - glance-api
+    - neutron
+    - glance-registry
+    - mysqld
+    - swift
+    - heat-api
+    - heat-api-cfn
+    - heat-api-cloudwatch
+    - nova-novncproxy
+
