@@ -57,6 +57,7 @@
     - restart_osd is defined
     - restart_osd == "yes"
 
+
 - name: unset osd flags
   command: ceph osd unset {{ item }}
   with_items:

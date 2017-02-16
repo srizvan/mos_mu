@@ -7,7 +7,13 @@ Usage for MOS 9.x
 
 For the first step you should make a perform a preparation playbook:
 ```
-ansible-playbook playbooks/mos9_prepare.yml -e '{"env_id":<env_id>}'
+ansible-playbook playbooks/mos9_prepare_fuel.yml
+```
+
+and then for each environment:
+
+```
+ansible-playbook playbooks/mos9_prepare_env.yml -e '{"env_id":<env_id>}'
 ```
 
 2. Check configuration customizations
@@ -22,7 +28,7 @@ The task ID is specified in the output of the configuration check command.
 
 Then verify the task summary:
 ```
-fuel2 task history show <TASK_ID> --include-summary -f yaml | python ./tool/parse_report.py
+fuel2 report <TASK_ID>
 ```
 
 The Noop run reports are stored on each OpenStack node in the
@@ -79,7 +85,7 @@ manage patches to successfully execute previous **verify_patches.yml** step.
 
 Update the Fuel Master node packages, services, and configuration:
 ```
-ansible-playbook playbooks/update_fuel.yml
+ansible-playbook playbooks/update_fuel.yml -e '{"rebuild_bootstrap":false}'
 ```
 More details you can find here:
 [update_fuel.yml](doc/architecture.md#update_fuelyml)
@@ -93,7 +99,7 @@ automatically.
 ---------------------
 Update the Fuel Slave nodes using the command below:
 ```
-fuel2 update --env <ENV_ID> install
+fuel2 update --env <ENV_ID> install --repos mos9.2
 ```
 Optionally, add the --restart-rabbit and --restart-mysql arguments to the
 command to restart RabbitMQ and MySQL automatically. Otherwise, these services
@@ -103,7 +109,24 @@ To verify the update progress, use the Fuel web UI Dashboard tab or run
 `fuel2 task show <TASK_ID>`. The task ID is specified in the output of the
 `fuel2 update –env <ENV_ID>` install command.
 
-7. Apply patches
+7. Upgrade kernel on 4.4
+------------------------
+Upgrade kernel for bootstrap on Fuel master node:
+```
+ansible-playbook playbooks/mos9_fuel_upgrade_kernel_4.4.yml
+```
+Upgrade kernel on all nodes for each environment:
+```
+ansible-playbook playbooks/mos9_env_upgrade_kernel_4.4.yml -e '{"env_id":<env_id>}'
+```
+
+8. Update CEPH
+------------------------
+```
+ansible-playbook playbooks/update_ceph -e '{"env_id":<env_id>,"restart_ceph":false}'
+```
+
+9. Apply patches
 ----------------
 ```
 ansible-playbook playbooks/mos9_apply_patches.yml -e '{"env_id":<env_id>}'
@@ -114,16 +137,14 @@ More details you can find here:
 This playbook apply gathered customizations and patches from **patches** folder
 from Fuel on each node and then restarts OpenStack services.
 
-Full restart
-------------
+10. Full restart
+----------------
 
-For the applying updates for some services like CEPH, QEMU and etc we would
-recommend to restart them manually and at the same time monitor thier status.
-
-Which services were updated you can find in output in section
-**Show upgradable packages**
-
-Please also read the upgrade section in documentation for these services.
+For the applying updates for kernel 4.4 and some services like  CEPH, QEMU and etc
+it is requered to restart all nodes in environment.
+```
+ansible-playbook playbooks/restart_env.yml -e '{"env_id":<env_id>}'
+```
 
 Rollback
 --------
@@ -139,8 +160,8 @@ local mirrors:
 ansible-playbook playbooks/create_mirrors.yml -e '{"env_id":<env_id>}'
 ```
 
-Then for the using them you to add **fuel_url** external variable:
+Then for the using them you to add **fuel_url** external variable like:
 ```
-ansible-playbook playbooks/apply_mu.yml -e '{"env_id":<env_id>,"fuel_url":"http://<FUEL_IP>:8080"}'
+ansible-playbook playbooks/apply_patches.yml -e '{"env_id":<env_id>,"fuel_url":"http://<FUEL_IP>:8080"}'
 ```
 
