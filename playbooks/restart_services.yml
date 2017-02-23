@@ -17,12 +17,95 @@
             restart
 
 - hosts: env_{{ env_id }}:&controller
+  name: Escalate privilege on haproxy socket to admin level
+  vars_files:
+    - "vars/mos_releases/{{ mos_release }}.yml"
+  tasks:
+    - name: Set admin privilege on unix socket in haproxy configuration
+      lineinfile: dest=/etc/haproxy/haproxy.cfg regexp='  stats  socket /var/lib/haproxy/stats' line='  stats  socket /var/lib/haproxy/stats mode 600 level admin'
+      #delegate_to: "{{ item }}"
+      #with_items: "{{ ansible_play_hosts }}"
+      when: "{{ ansible_play_hosts|length > 1 }}"
+
+#    - name: Stop haproxy service under Pacemaker
+#      service: name=haproxy state=restarted
+#      ignore_errors: yes
+#      failed_when:
+#        - restart_result | failed
+#        - "'no service or tool found for' not in restart_result.msg"
+#      when: "{{ ansible_play_hosts|length > 1 }}"
+
+    - name: Stop HAproxy under Pacemaker
+      tags: controller_pcs
+      run_once: true
+      ignore_errors: yes
+      script: files/pcs_resource_stop.sh p_haproxy
+      register: stop_result
+      changed_when:
+        - stop_result.rc < 100
+      failed_when:
+        - stop_result | failed
+        - stop_result.rc < 100
+      when: "{{ ansible_play_hosts|length > 1 }}"
+
+    - name: Force Stop HAproxy under Pacemaker
+      tags: controller_pcs
+      ignore_errors: yes
+      script: files/pcs_resource_stop_force.sh p_haproxy
+      register: fstop_result
+      changed_when:
+        - fstop_result.rc < 100
+      failed_when:
+        - fstop_result | failed
+        - fstop_result.rc < 100
+      when: "{{ ansible_play_hosts|length > 1 }}"
+
+    - pause: seconds=5
+
+    - name: Start HAproxy under Pacemaker
+      tags: controller_pcs
+      run_once: true
+      ignore_errors: yes
+      script: files/pcs_resource_start.sh p_haproxy
+      register: start_result
+      changed_when:
+        - start_result.rc < 100
+      failed_when:
+        - start_result | failed
+        - start_result.rc < 100
+      when: "{{ ansible_play_hosts|length > 1 }}"
+
+- hosts: env_{{ env_id }}:&controller
   name: Restart OpenStack services on controllers
   serial: 1
   vars_files:
     - "vars/mos_releases/{{ mos_release }}.yml"
 
-  pre_tasks:
+#  pre_tasks:
+#    - name: Escalate privilege on haproxy socket to admin level
+#      lineinfile: dest=/etc/haproxy/haproxy.cfg regexp='  stats  socket /var/lib/haproxy/stats' line='  stats  socket /var/lib/haproxy/stats mode 600 level admin'
+#      #delegate_to: "{{ item }}"
+#      #with_items: "{{ ansible_play_hosts }}"
+#      when: "{{ ansible_play_hosts|length > 1 }}"
+#
+#    - name: Restart haproxy on {{ hostname }}
+#      service: name=haproxy state=restarted
+#      ignore_errors: yes
+#      failed_when:
+#        - restart_result | failed
+#        - "'no service or tool found for' not in restart_result.msg"
+#      when: "{{ ansible_play_hosts|length > 1 }}"
+
+
+#    - name: Disable {{ hostname }} in haproxy
+#      haproxy: 'state=disabled backend={{ item[1] }} host={{ hostname }} socket=/var/lib/haproxy/stats'
+#      delegate_to: "{{ item[0] }}"
+#      with_nested:
+#        - "{{ ansible_play_hosts }}"
+#        - "{{ haproxy_backends }}"
+#      when: "{{ ansible_play_hosts|length > 1 }}"
+
+  tasks:
     - name: Disable {{ hostname }} in haproxy
       haproxy: 'state=disabled backend={{ item[1] }} host={{ hostname }} socket=/var/lib/haproxy/stats'
       delegate_to: "{{ item[0] }}"
@@ -31,7 +114,6 @@
         - "{{ haproxy_backends }}"
       when: "{{ ansible_play_hosts|length > 1 }}"
 
-  tasks:
     - name: Restart OpenStack services on {{ hostname }}
       tags: controller_services
       ignore_errors: yes
@@ -44,13 +126,71 @@
       when: restart is undefined or
             restart
 
-  post_tasks:
     - name: Enable {{ hostname }} in haproxy
       haproxy: 'state=enabled backend={{ item[1] }} host={{ hostname }} socket=/var/lib/haproxy/stats'
       delegate_to: "{{ item[0] }}"
       with_nested:
         - "{{ ansible_play_hosts }}"
         - "{{ haproxy_backends }}"
+      when: "{{ ansible_play_hosts|length > 1 }}"
+
+
+- hosts: env_{{ env_id }}:&controller
+  name: Escalate privilege on haproxy socket to admin level
+  vars_files:
+    - "vars/mos_releases/{{ mos_release }}.yml"
+  tasks:
+
+#    - name: Enable {{ hostname }} in haproxy
+#      haproxy: 'state=enabled backend={{ item[1] }} host={{ hostname }} socket=/var/lib/haproxy/stats'
+#      delegate_to: "{{ item[0] }}"
+#      with_nested:
+#        - "{{ ansible_play_hosts }}"
+#        - "{{ haproxy_backends }}"
+#      when: "{{ ansible_play_hosts|length > 1 }}"
+    
+    - name: Set admin privilege on unix socket in haproxy configuration
+      lineinfile: dest=/etc/haproxy/haproxy.cfg regexp='  stats  socket /var/lib/haproxy/stats mode 600 level admin' line='  stats  socket /var/lib/haproxy/stats'
+      #delegate_to: "{{ item }}"
+      #with_items: "{{ ansible_play_hosts }}"
+      when: "{{ ansible_play_hosts|length > 1 }}"
+
+    - name: Stop HAproxy under Pacemaker
+      tags: controller_pcs
+      run_once: true
+      ignore_errors: yes
+      script: files/pcs_resource_stop.sh p_haproxy
+      register: stop_result
+      changed_when:
+        - stop_result.rc < 100
+      failed_when:
+        - stop_result | failed
+        - stop_result.rc < 100
+      when: "{{ ansible_play_hosts|length > 1 }}"
+
+    - name: Force Stop HAproxy under Pacemaker
+      tags: controller_pcs
+      ignore_errors: yes
+      script: files/pcs_resource_stop_force.sh p_haproxy
+      register: fstop_result
+      changed_when:
+        - fstop_result.rc < 100
+      failed_when:
+        - fstop_result | failed
+        - fstop_result.rc < 100
+      when: "{{ ansible_play_hosts|length > 1 }}"
+
+    - name: Start HAproxy under Pacemaker
+      tags: controller_pcs
+      run_once: true
+      ignore_errors: yes
+      script: files/pcs_resource_start.sh p_haproxy
+      register: start_result
+      changed_when:
+        - start_result.rc < 100
+      failed_when:
+        - start_result | failed
+        - start_result.rc < 100
       when: "{{ ansible_play_hosts|length > 1 }}"
 
 - hosts: env_{{ env_id }}:&controller
@@ -62,7 +202,7 @@
     - name: Get OCFs which have "remove_artifacts_on_stop_start"
       tags: controller_pcs
       ignore_errors: yes
-      shell: fgrep -r remove_artifacts_on_stop_start /usr/lib/ocf/resource.d/
+      shell: fgrep -lr remove_artifacts_on_stop_start /usr/lib/ocf/resource.d/
       register: ocfs
 
     - block:
