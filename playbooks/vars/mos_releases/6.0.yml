@@ -5,7 +5,8 @@ fuel_url: "http://mirror.fuel-infra.org/fwm/"
 apt_repos:
   - name: "mu-8"
     url: "{{ fuel_url }}/{{ env_release }}/updates/ubuntu"
-    repo: "precise"
+    suites:
+      - "precise"
     type: "main"
 apt_sources_lists:
   - name: "fuel"
@@ -46,6 +47,22 @@ controller_services:
     - openstack-murano-api
     - openstack-murano-engine
     - apache2
+    - swift-account-auditor
+    - swift-account
+    - swift-account-reaper
+    - swift-account-replicator
+    - swift-container-auditor
+    - swift-container
+    - swift-container-reconciler
+    - swift-container-replicator
+    - swift-container-sync
+    - swift-container-updater
+    - swift-object-auditor
+    - swift-object
+    - swift-object-reconstructor
+    - swift-object-replicator
+    - swift-object-updater
+    - swift-proxy
 
 compute_services:
     - nova-compute
